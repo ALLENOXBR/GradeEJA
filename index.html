@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Grade Escolar Premium - E.E. Prof. Juvenília</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Biblioteca para gerar PDF como imagem -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -33,13 +35,19 @@
         .custom-scroll::-webkit-scrollbar-track { background: transparent; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #FACC15; border-radius: 10px; }
 
-        @media print {
-            .no-print { display: none !important; }
-            body { background: white !important; color: black !important; padding: 0 !important; }
-            .print-container { box-shadow: none !important; border: 1px solid #000 !important; width: 100% !important; max-width: none !important; }
-            .bg-primary { background-color: #FACC15 !important; -webkit-print-color-adjust: exact; }
-            @page { size: landscape; margin: 0.5cm; }
+        /* REGRAS DE VISIBILIDADE */
+        .mobile-grid { display: block; }
+        .desktop-table { display: none; }
+
+        @media (min-width: 1025px) {
+            .mobile-grid { display: none; }
+            .desktop-table { display: table; }
         }
+
+        /* FORÇAR TABELA NO PDF (MESMO NO MOBILE) */
+        .is-generating-pdf .mobile-grid { display: none !important; }
+        .is-generating-pdf .desktop-table { display: table !important; width: 1000px !important; }
+        .is-generating-pdf .print-container { border: 1px solid #e2e8f0 !important; border-radius: 0 !important; box-shadow: none !important; }
 
         .editable-input {
             background: transparent;
@@ -51,7 +59,6 @@
             cursor: default;
         }
 
-        /* Ajuste específico para o título textarea */
         textarea.editable-input {
             resize: none;
             overflow: hidden;
@@ -65,17 +72,29 @@
             cursor: text;
         }
 
-        @media (max-width: 1024px) {
-            .desktop-table { display: none; }
-            .mobile-grid { display: block; }
-        }
-        @media (min-width: 1025px) {
-            .desktop-table { display: table; }
-            .mobile-grid { display: none; }
+        #pdfLoader {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.85);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            color: white;
+            font-weight: 800;
+            backdrop-blur: 5px;
         }
     </style>
 </head>
 <body class="bg-slate-50 dark:bg-darkBg text-slate-900 dark:text-slate-100 transition-colors duration-300 min-h-screen flex flex-col">
+
+    <!-- Loader de PDF -->
+    <div id="pdfLoader">
+        <div class="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent mb-4"></div>
+        <p class="text-lg">Processando imagem de alta qualidade...</p>
+        <p class="text-sm font-normal opacity-70 mt-2">Aguarde, formatando para página única.</p>
+    </div>
 
     <!-- Navbar -->
     <nav class="sticky top-0 z-[100] bg-white/90 dark:bg-darkCard/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-700 no-print w-full">
@@ -97,8 +116,8 @@
                     <span id="editText">Editar</span>
                 </button>
 
-                <button onclick="window.print()" class="px-4 py-1.5 bg-primary text-slate-900 rounded-lg font-black text-xs shadow-sm active:scale-95">
-                    PDF
+                <button onclick="generatePDF()" class="px-4 py-1.5 bg-primary text-slate-900 rounded-lg font-black text-xs shadow-md active:scale-95 transition-all">
+                    SALVAR PDF
                 </button>
             </div>
         </div>
@@ -106,10 +125,11 @@
 
     <!-- Main Wrapper -->
     <div class="flex-1 w-full py-4 sm:py-8 px-2 sm:px-4 flex flex-col items-center">
-        <main id="mainContainer" class="w-full max-w-[1100px] print:max-w-none">
-            <div class="bg-white dark:bg-darkCard rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 print-container">
+        <main id="mainContainer" class="w-full max-w-[1100px]">
+            <!-- exportArea: A div que será fotografada -->
+            <div id="exportArea" class="bg-white dark:bg-darkCard rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 print-container">
                 
-                <!-- Header: Corrigido para permitir quebra de linha no título -->
+                <!-- Header -->
                 <header class="p-5 md:p-8 border-b-4 border-primary bg-slate-50/50 dark:bg-slate-800/30 flex flex-col md:flex-row gap-5 md:gap-8 items-start md:items-center">
                     <div class="w-16 h-16 md:w-24 md:h-24 bg-primary rounded-2xl flex items-center justify-center shadow-lg shrink-0 mx-auto md:mx-0">
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 md:w-12 text-slate-900" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M8 7h6"/><path d="M8 11h8"/></svg>
@@ -117,7 +137,6 @@
                     
                     <div class="flex-1 text-center md:text-left w-full">
                         <h2 class="text-lg md:text-2xl font-black text-slate-900 dark:text-white mb-4 leading-tight">
-                            <!-- Textarea para o título (permite quebra de linha automática) -->
                             <textarea class="editable-input uppercase tracking-tight w-full" data-key="schoolName" readonly oninput="this.style.height = '';this.style.height = this.scrollHeight + 'px'">ESCOLA ESTADUAL PROFESSORA JUVENÍLIA FERREIRA DOS SANTOS</textarea>
                         </h2>
                         
@@ -160,12 +179,12 @@
                     </div>
                 </div>
 
-                <!-- View Mobile -->
+                <!-- Lista Mobile -->
                 <div id="mobileSchedule" class="mobile-grid p-4 space-y-6 bg-slate-50 dark:bg-slate-900/20">
                     <!-- Preenchido via JS -->
                 </div>
 
-                <!-- View Desktop -->
+                <!-- Tabela Desktop -->
                 <div class="desktop-table w-full overflow-x-auto custom-scroll">
                     <table class="w-full border-collapse">
                         <thead>
@@ -204,7 +223,6 @@
 
     <script>
         const days = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta'];
-        
         const scheduleData = [
             { label: '18:10', type: 'special', content: '••••••••••••••••••••••••••••••••••••' },
             { label: '1º Horário', items: [['Soluções Mat.', 'Vilson'], ['Português', 'Elza'], ['Intervenção Cidadã', 'Marcelo'], ['Química', 'Pollyana'], ['Biologia', 'Ranner']] },
@@ -213,6 +231,44 @@
             { label: '3º Horário', items: [['Matemática', 'Crislaine'], ['Geografia', 'Marcelo'], ['Sociologia', 'Fabiola'], ['Português', 'Elza'], ['Matemática', 'Crislaine']] },
             { label: '4º Horário', items: [['Português', 'Elza'], ['Matemática', 'Crislaine'], ['Filosofia', 'José'], ['Biologia', 'Ranner'], ['Inglês', 'Ana Paula']] }
         ];
+
+        // FUNÇÃO DE SALVAMENTO REESTRUTURADA
+        async function generatePDF() {
+            const loader = document.getElementById('pdfLoader');
+            const element = document.getElementById('exportArea');
+            const schoolName = document.querySelector('[data-key="schoolName"]').value || 'Grade';
+            
+            loader.style.display = 'flex';
+
+            // ATIVAR MODO DE GERAÇÃO (Força Tabela mesmo no Mobile)
+            document.body.classList.add('is-generating-pdf');
+
+            const opt = {
+                margin: 0,
+                filename: `Grade_${schoolName.substring(0,30).replace(/ /g, '_')}.pdf`,
+                image: { type: 'jpeg', quality: 1.0 },
+                html2canvas: { 
+                    scale: 2, // Aumenta a resolução
+                    useCORS: true,
+                    windowWidth: 1200, // Simula um navegador de 1200px (Desktop) para o print
+                    backgroundColor: document.documentElement.classList.contains('dark') ? '#0F172A' : '#FFFFFF'
+                },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+            };
+
+            try {
+                // Aguarda um pequeno delay para garantir que o CSS 'is-generating-pdf' aplicou
+                await new Promise(r => setTimeout(r, 500));
+                
+                await html2pdf().set(opt).from(element).save();
+            } catch (err) {
+                console.error('Erro ao gerar PDF:', err);
+            } finally {
+                // VOLTAR AO NORMAL
+                document.body.classList.remove('is-generating-pdf');
+                loader.style.display = 'none';
+            }
+        }
 
         function autoResizeTitle() {
             const tx = document.querySelector('textarea[data-key="schoolName"]');
@@ -234,7 +290,7 @@
                     desktopHTML += `
                         <tr class="border-b border-slate-100 dark:border-slate-800">
                             <td class="p-2 bg-slate-50/50 dark:bg-slate-800/20 text-center font-black text-[10px] border-r border-slate-200 dark:border-slate-700">${row.label}</td>
-                            <td colspan="5" class="p-2 text-center font-black tracking-[1.5em] text-slate-200 dark:text-slate-700 select-none overflow-hidden whitespace-nowrap opacity-30 text-[9px]">${row.content}</td>
+                            <td colspan="5" class="p-2 text-center font-black tracking-[1.5em] text-slate-200 dark:text-slate-700 opacity-30 text-[9px]">${row.content}</td>
                         </tr>
                     `;
                 } else if (row.type === 'break') {
@@ -263,9 +319,9 @@
                         
                         tdCells += `
                             <td class="p-2 border-r border-slate-200 dark:border-slate-700 text-center hover:bg-yellow-50 dark:hover:bg-yellow-900/10 transition-all group">
-                                <input class="editable-input font-black text-[11px] sm:text-xs block mb-0.5 group-hover:scale-105 transition-transform" data-key="${keyS}" value="${cell[0]}" readonly>
+                                <input class="editable-input font-black text-[11px] sm:text-xs block mb-0.5" data-key="${keyS}" value="${cell[0]}" readonly>
                                 <div class="text-[8px] sm:text-[9px] font-bold text-amber-700 dark:text-yellow-500 uppercase flex items-center justify-center gap-1 bg-amber-500/5 py-0.5 rounded">
-                                    <span class="opacity-50">(</span><input class="editable-input w-auto text-center" data-key="${keyP}" value="${cell[1]}" readonly><span class="opacity-50">)</span>
+                                    <input class="editable-input w-auto text-center" data-key="${keyP}" value="${cell[1]}" readonly>
                                 </div>
                             </td>
                         `;
@@ -330,11 +386,11 @@
                 const key = input.getAttribute('data-key');
                 if(key) data[key] = input.value;
             });
-            localStorage.setItem('grade_v7_title_fix', JSON.stringify(data));
+            localStorage.setItem('grade_v9_perfect_pdf', JSON.stringify(data));
         }
 
         function loadData() {
-            const savedData = localStorage.getItem('grade_v7_title_fix');
+            const savedData = localStorage.getItem('grade_v9_perfect_pdf');
             if (savedData) {
                 const data = JSON.parse(savedData);
                 document.querySelectorAll('.editable-input').forEach(input => {
