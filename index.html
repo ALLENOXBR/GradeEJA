@@ -44,10 +44,21 @@
             .desktop-table { display: table; }
         }
 
-        /* FORÇAR TABELA NO PDF (MESMO NO MOBILE) */
+        /* CORREÇÃO PARA O PDF - CENTRALIZAÇÃO E CORTE */
         .is-generating-pdf .mobile-grid { display: none !important; }
-        .is-generating-pdf .desktop-table { display: table !important; width: 1000px !important; }
-        .is-generating-pdf .print-container { border: 1px solid #e2e8f0 !important; border-radius: 0 !important; box-shadow: none !important; }
+        .is-generating-pdf .desktop-table { display: table !important; width: 1050px !important; margin: 0 !important; }
+        .is-generating-pdf #exportArea { 
+            width: 1050px !important; 
+            margin: 0 !important; 
+            padding: 0 !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            transform: none !important;
+            position: relative !important;
+            left: 0 !important;
+            top: 0 !important;
+        }
+        .is-generating-pdf #mainContainer { padding: 0 !important; margin: 0 !important; max-width: none !important; }
 
         .editable-input {
             background: transparent;
@@ -92,8 +103,8 @@
     <!-- Loader de PDF -->
     <div id="pdfLoader">
         <div class="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent mb-4"></div>
-        <p class="text-lg">Processando imagem de alta qualidade...</p>
-        <p class="text-sm font-normal opacity-70 mt-2">Aguarde, formatando para página única.</p>
+        <p class="text-lg">Centralizando e gerando PDF...</p>
+        <p class="text-sm font-normal opacity-70 mt-2">Corrigindo margens para página única.</p>
     </div>
 
     <!-- Navbar -->
@@ -107,7 +118,7 @@
             </div>
 
             <div class="flex items-center gap-2">
-                <button id="themeToggle" class="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                <button id="themeToggle" class="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="Alternar Tema">
                     <svg id="sunIcon" class="hidden dark:block w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
                     <svg id="moonIcon" class="block dark:hidden w-4 h-4 text-slate-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
                 </button>
@@ -126,7 +137,6 @@
     <!-- Main Wrapper -->
     <div class="flex-1 w-full py-4 sm:py-8 px-2 sm:px-4 flex flex-col items-center">
         <main id="mainContainer" class="w-full max-w-[1100px]">
-            <!-- exportArea: A div que será fotografada -->
             <div id="exportArea" class="bg-white dark:bg-darkCard rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 print-container">
                 
                 <!-- Header -->
@@ -175,7 +185,8 @@
                     </div>
                     <div class="text-[10px] font-bold bg-white dark:bg-slate-800 px-3 py-1 rounded-full shadow-sm border border-slate-200 dark:border-slate-700 flex items-center gap-2">
                         <span class="opacity-50">INÍCIO:</span>
-                        <input class="editable-input w-12 text-center font-black" data-key="t1" value="19:10" readonly>
+                        <!-- Horário padrão alterado para 19:00 -->
+                        <input class="editable-input w-12 text-center font-black" data-key="t1" value="19:00" readonly>
                     </div>
                 </div>
 
@@ -224,7 +235,8 @@
     <script>
         const days = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta'];
         const scheduleData = [
-            { label: '19:10', type: 'special', content: '••••••••••••••••••••••••••••••••••••' },
+            // Horário padrão da linha especial alterado para 19:00
+            { label: '19:00', type: 'special', content: '••••••••••••••••••••••••••••••••••••' },
             { label: '1º Horário', items: [['Soluções Mat.', 'Vilson'], ['Português', 'Elza'], ['Intervenção Cidadã', 'Marcelo'], ['Química', 'Pollyana'], ['Biologia', 'Ranner']] },
             { label: '2º Horário', items: [['História', 'Geane'], ['Arte', 'Cristino'], ['Português', 'Elza'], ['Matemática', 'Crislaine'], ['Física', 'Daniel']] },
             { label: 'Recreio', type: 'break', content: 'Intervalo de Convivência' },
@@ -232,7 +244,7 @@
             { label: '4º Horário', items: [['Português', 'Elza'], ['Matemática', 'Crislaine'], ['Filosofia', 'José'], ['Biologia', 'Ranner'], ['Inglês', 'Ana Paula']] }
         ];
 
-        // FUNÇÃO DE SALVAMENTO REESTRUTURADA
+        // FUNÇÃO DE SALVAMENTO COM CORREÇÃO DE POSICIONAMENTO
         async function generatePDF() {
             const loader = document.getElementById('pdfLoader');
             const element = document.getElementById('exportArea');
@@ -240,33 +252,35 @@
             
             loader.style.display = 'flex';
 
-            // ATIVAR MODO DE GERAÇÃO (Força Tabela mesmo no Mobile)
             document.body.classList.add('is-generating-pdf');
 
             const opt = {
-                margin: 0,
-                filename: `Grade_${schoolName.substring(0,30).replace(/ /g, '_')}.pdf`,
+                margin: [10, 10, 10, 10],
+                filename: `Grade_${schoolName.substring(0,25).replace(/ /g, '_')}.pdf`,
                 image: { type: 'jpeg', quality: 1.0 },
                 html2canvas: { 
-                    scale: 2, // Aumenta a resolução
+                    scale: 2, 
                     useCORS: true,
-                    windowWidth: 1200, // Simula um navegador de 1200px (Desktop) para o print
-                    backgroundColor: document.documentElement.classList.contains('dark') ? '#0F172A' : '#FFFFFF'
+                    logging: false,
+                    letterRendering: true,
+                    scrollX: 0,
+                    scrollY: 0,
+                    x: 0,
+                    y: 0,
+                    windowWidth: 1100
                 },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
             };
 
             try {
-                // Aguarda um pequeno delay para garantir que o CSS 'is-generating-pdf' aplicou
-                await new Promise(r => setTimeout(r, 500));
-                
+                await new Promise(r => setTimeout(r, 400));
                 await html2pdf().set(opt).from(element).save();
             } catch (err) {
                 console.error('Erro ao gerar PDF:', err);
             } finally {
-                // VOLTAR AO NORMAL
                 document.body.classList.remove('is-generating-pdf');
                 loader.style.display = 'none';
+                autoResizeTitle();
             }
         }
 
@@ -289,7 +303,10 @@
                 if (row.type === 'special') {
                     desktopHTML += `
                         <tr class="border-b border-slate-100 dark:border-slate-800">
-                            <td class="p-2 bg-slate-50/50 dark:bg-slate-800/20 text-center font-black text-[10px] border-r border-slate-200 dark:border-slate-700">${row.label}</td>
+                            <td class="p-2 bg-slate-50/50 dark:bg-slate-800/20 text-center font-black text-[10px] border-r border-slate-200 dark:border-slate-700">
+                                <!-- O label agora é sincronizado com o campo t1 -->
+                                <input class="editable-input text-center" data-key="t1" value="${row.label}" readonly>
+                            </td>
                             <td colspan="5" class="p-2 text-center font-black tracking-[1.5em] text-slate-200 dark:text-slate-700 opacity-30 text-[9px]">${row.content}</td>
                         </tr>
                     `;
@@ -386,11 +403,11 @@
                 const key = input.getAttribute('data-key');
                 if(key) data[key] = input.value;
             });
-            localStorage.setItem('grade_v9_perfect_pdf', JSON.stringify(data));
+            localStorage.setItem('grade_v10_centered_pdf', JSON.stringify(data));
         }
 
         function loadData() {
-            const savedData = localStorage.getItem('grade_v9_perfect_pdf');
+            const savedData = localStorage.getItem('grade_v10_centered_pdf');
             if (savedData) {
                 const data = JSON.parse(savedData);
                 document.querySelectorAll('.editable-input').forEach(input => {
