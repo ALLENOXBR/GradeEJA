@@ -185,7 +185,7 @@
                     </div>
                     <div class="text-[10px] font-bold bg-white dark:bg-slate-800 px-3 py-1 rounded-full shadow-sm border border-slate-200 dark:border-slate-700 flex items-center gap-2">
                         <span class="opacity-50">INÍCIO:</span>
-                        <!-- Horário padrão alterado para 19:00 -->
+                        <!-- Horário revertido para 19:00 -->
                         <input class="editable-input w-12 text-center font-black" data-key="t1" value="19:00" readonly>
                     </div>
                 </div>
@@ -234,24 +234,23 @@
 
     <script>
         const days = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta'];
+        
+        // HORÁRIO INICIAL REVERTIDO PARA 19:00
         const scheduleData = [
-            // Horário padrão da linha especial alterado para 19:00
             { label: '19:00', type: 'special', content: '••••••••••••••••••••••••••••••••••••' },
-            { label: '1º Horário', items: [['Soluções Mat.', 'Vilson'], ['Português', 'Elza'], ['Intervenção Cidadã', 'Marcelo'], ['Química', 'Pollyana'], ['Biologia', 'Ranner']] },
+            { label: '1º Horário', items: [['Intervenção Cidadã', 'Marcelo'], ['Português', 'Elza'], ['Matemática', 'Crislaine'], ['Química', 'Pollyana'], ['Biologia', 'Ranner']] },
             { label: '2º Horário', items: [['História', 'Geane'], ['Arte', 'Cristino'], ['Português', 'Elza'], ['Matemática', 'Crislaine'], ['Física', 'Daniel']] },
             { label: 'Recreio', type: 'break', content: 'Intervalo de Convivência' },
-            { label: '3º Horário', items: [['Matemática', 'Crislaine'], ['Geografia', 'Marcelo'], ['Sociologia', 'Fabiola'], ['Português', 'Elza'], ['Matemática', 'Crislaine']] },
+            { label: '3º Horário', items: [['Matemática', 'Crislaine'], ['Geografia', 'Marcelo'], ['Sociologia', 'Fabíola'], ['Português', 'Elza'], ['Soluções Mat.', 'Vilson']] },
             { label: '4º Horário', items: [['Português', 'Elza'], ['Matemática', 'Crislaine'], ['Filosofia', 'José'], ['Biologia', 'Ranner'], ['Inglês', 'Ana Paula']] }
         ];
 
-        // FUNÇÃO DE SALVAMENTO COM CORREÇÃO DE POSICIONAMENTO
         async function generatePDF() {
             const loader = document.getElementById('pdfLoader');
             const element = document.getElementById('exportArea');
             const schoolName = document.querySelector('[data-key="schoolName"]').value || 'Grade';
             
             loader.style.display = 'flex';
-
             document.body.classList.add('is-generating-pdf');
 
             const opt = {
@@ -263,10 +262,6 @@
                     useCORS: true,
                     logging: false,
                     letterRendering: true,
-                    scrollX: 0,
-                    scrollY: 0,
-                    x: 0,
-                    y: 0,
                     windowWidth: 1100
                 },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
@@ -304,7 +299,6 @@
                     desktopHTML += `
                         <tr class="border-b border-slate-100 dark:border-slate-800">
                             <td class="p-2 bg-slate-50/50 dark:bg-slate-800/20 text-center font-black text-[10px] border-r border-slate-200 dark:border-slate-700">
-                                <!-- O label agora é sincronizado com o campo t1 -->
                                 <input class="editable-input text-center" data-key="t1" value="${row.label}" readonly>
                             </td>
                             <td colspan="5" class="p-2 text-center font-black tracking-[1.5em] text-slate-200 dark:text-slate-700 opacity-30 text-[9px]">${row.content}</td>
@@ -403,11 +397,11 @@
                 const key = input.getAttribute('data-key');
                 if(key) data[key] = input.value;
             });
-            localStorage.setItem('grade_v10_centered_pdf', JSON.stringify(data));
+            localStorage.setItem('grade_v2026_reverted_time', JSON.stringify(data));
         }
 
         function loadData() {
-            const savedData = localStorage.getItem('grade_v10_centered_pdf');
+            const savedData = localStorage.getItem('grade_v2026_reverted_time');
             if (savedData) {
                 const data = JSON.parse(savedData);
                 document.querySelectorAll('.editable-input').forEach(input => {
